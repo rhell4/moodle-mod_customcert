@@ -138,7 +138,7 @@ class report_table extends \table_sql {
         if ($this->is_downloading() === '') {
             return userdate($user->timecreated);
         }
-        $format = get_string('strftimedatetimeshort', 'langconfig');
+        $format = '%Y-%m-%d %H:%M';
         return userdate($user->timecreated, $format);
     }
 
