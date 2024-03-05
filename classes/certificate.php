@@ -255,19 +255,11 @@ class certificate {
     /**
      * Download all certificate issues.
      *
-     * @param \stdClass $customcert
      * @param \stdClass $template
-     * @param \stdClass $cm
-     * @param bool $groupmode
+     * @param array $issues
      * @return void
      */
-    public static function download_all(\stdClass $customcert, \stdClass $template, \stdClass $cm, bool $groupmode): void {
-        $issues = self::get_issues($customcert->id, $groupmode, $cm, 0, 0);
-
-        if (empty($issues)) {
-            return;
-        }
-
+    public static function download_all_for_instance(\stdClass $template, array $issues): void {
         $template = new \mod_customcert\template($template);
 
         $zipdir = make_request_directory();
@@ -292,6 +284,12 @@ class certificate {
 
         send_file($zipfullpath, $zipfilename);
         exit();
+    }
+
+    public static function download_all_for_site() {
+        global $DB;
+
+        $issues = $DB->get_records('customcert_issues');
     }
 
     /**
