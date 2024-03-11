@@ -255,13 +255,12 @@ class certificate {
     /**
      * Download all certificate issues.
      *
-     * @param \stdClass $template
+     * @param template $template
      * @param array $issues
      * @return void
+     * @throws \moodle_exception
      */
-    public static function download_all_for_instance(\stdClass $template, array $issues): void {
-        $template = new \mod_customcert\template($template);
-
+    public static function download_issues_with_same_template(\mod_customcert\template $template, array $issues): void {
         $zipdir = make_request_directory();
         if (!$zipdir) {
             return;
@@ -286,10 +285,52 @@ class certificate {
         exit();
     }
 
-    public static function download_all_for_site() {
+    public static function download_all_for_site(): void {
         global $DB;
 
-        $issues = $DB->get_records('customcert_issues');
+        list($namefields, $nameparams) = \core_user\fields::get_sql_fullname();
+        $sql = "SELECT ci.*, $namefields as fullname, ct.id as templateid, ct.name as templatename, ct.contextid
+                  FROM {customcert_issues} ci
+                  JOIN {user} u
+                    ON ci.userid = u.id
+                  JOIN {customcert} c 
+                    ON ci.customcertid = c.id
+                  JOIN {customcert_templates} ct
+                    ON c.templateid = ct.id";
+        if ($issues = $DB->get_records_sql($sql, $nameparams)) {
+            print_object($issues);
+            exit();
+            $zipdir = make_request_directory();
+            if (!$zipdir) {
+                return;
+            }
+
+            $zipfilenameprefix = userdate(time(), self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES_DATE_FORMAT);
+            $zipfilename = $zipfilenameprefix . "_" . self::ZIP_FILE_NAME_DOWNLOAD_ALL_CERTIFICATES;
+            $zipfullpath = $zipdir . DIRECTORY_SEPARATOR . $zipfilename;
+
+            $ziparchive = new \zip_archive();
+
+            foreach ($issues as $issue) {
+                $template = new \stdClass();
+                $template->id = $issue->templateid;
+                $template->name = $issue->templatename;
+                $template->contextid = $issue->contextid;
+                $template = new \mod_customcert\template($template);
+
+                $userfullname = str_replace(' ', '_', mb_strtolower($issue->fullname, FORMAT_PLAIN));
+                print_object($userfullname);
+                print_object($issue);
+                print_object('here is this one');
+                exit();
+                $pdfname = $userfullname . DIRECTORY_SEPARATOR . 'certificate.pdf';
+                $filecontents = $template->generate_pdf(false, $issue->userid, true);
+                $ziparchive->add_file_from_string($pdfname, $filecontents);
+            }
+
+            send_file($zipfullpath, $zipfilename);
+            exit();
+        }
     }
 
     /**
